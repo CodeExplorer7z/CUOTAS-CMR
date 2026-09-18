@@ -3,253 +3,363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora CMR - Precisión Bancaria</title>
-    
-    <!-- Librerías para generación de PDF -->
+    <title>Simulador de Cuotas CMR</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
-        .container { max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #008a3d; margin-top: 0; }
-        label { display: block; margin-top: 15px; font-weight: bold; font-size: 0.9em; }
-        input[type="number"], input[type="date"], select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        input[readonly] { background-color: #e9ecef; cursor: not-allowed; color: #666; }
+        :root {
+            --color-primary: #008a3c;
+            --color-dark: #000000;
+            --color-bg-light: #f9f9f9;
+            --color-border: #e0e0e0;
+            --color-warning-bg: #fffcf0;
+            --color-warning-border: #f0e6d2;
+        }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            padding: 20px; 
+            max-width: 650px; 
+            margin: auto; 
+            color: #333;
+            background-color: #f4f5f7;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+        label { font-weight: 600; margin-bottom: 8px; font-size: 13px; color: #444; }
+        select, input { 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            font-size: 14px; 
+            width: 100%;
+            box-sizing: border-box;
+        }
         
-        .btn-principal { width: 100%; padding: 12px; background: #008a3d; color: white; border: none; border-radius: 5px; margin-top: 20px; cursor: pointer; font-size: 1em; font-weight: bold; }
-        .btn-principal:hover { background: #006b2f; }
-        
-        .result { margin-top: 20px; display: none; }
-        .card-green { background: #35a835; color: white; padding: 15px; border-radius: 5px; margin-bottom: 5px; text-align: center; font-size: 1.1em; }
-        .card-green span { display: block; font-size: 0.8em; margin-bottom: 5px; font-weight: normal; }
-        .card-green strong { font-size: 1.4em; }
-        .card-black { background: #000; color: white; padding: 15px; border-radius: 5px; text-align: center; font-size: 1.1em; margin-bottom: 5px;}
-        .details { margin-top: 15px; font-size: 0.9em; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
-        .details p { margin: 5px 0; display: flex; justify-content: space-between; }
-        
-        /* Estilos del Cronograma y UI de PDF */
-        .cronograma { margin-top: 15px; border: 1px solid #008a3d; background: #fff; padding: 15px; border-radius: 5px; position: relative; }
-        .cronograma-top-bar { display: flex; justify-content: center; align-items: center; margin-bottom: 10px; position: relative; }
-        
-        .btn-pdf { position: absolute; left: 0; top: 0; background: #e0004d; color: white; border: none; border-radius: 5px; padding: 5px 12px; font-size: 0.8em; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .btn-pdf:hover { background: #b3003d; }
-        
-        .input-titulo-pdf { width: 50%; padding: 4px; text-align: center; border: 1px dashed #ccc; border-radius: 4px; font-size: 0.85em; color: #555; background: #fafafa; margin: 0; }
-        .input-titulo-pdf:focus { border-color: #008a3d; outline: none; background: #fff; }
+        .box-anticipado {
+            background-color: var(--color-warning-bg);
+            border: 1px solid var(--color-warning-border);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .box-anticipado h4 {
+            margin: 0 0 15px 0;
+            color: #856404;
+            text-align: center;
+            font-size: 14px;
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        .cronograma-title { text-align: center; color: #008a3d; font-weight: bold; margin-bottom: 15px; font-size: 1.1em; }
-        .cronograma-header { display: flex; justify-content: space-between; font-weight: bold; border-bottom: 2px solid #008a3d; padding-bottom: 8px; margin-bottom: 10px; font-size: 0.85em; color: #008a3d; }
-        .cronograma-row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; font-size: 0.95em; border-bottom: 1px dashed #eee; padding-bottom: 8px; }
-        .cronograma-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .btn-block {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .summary-box {
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .summary-black { background-color: var(--color-dark); color: white; }
+        .summary-green { background-color: #39a94b; color: white; display: flex; flex-direction: column; gap: 5px; }
+        .summary-green span:first-child { font-size: 12px; font-weight: normal; }
+        .summary-green span:last-child { font-size: 22px; }
+
+        .table-header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            border: 1px solid var(--color-primary);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            position: relative;
+            background: white;
+        }
+        .btn-pdf {
+            position: absolute;
+            left: 15px;
+            background-color: #e9004b;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .table-title { color: var(--color-primary); font-weight: bold; margin: 0; }
         
-        .col-n { width: 25%; text-align: left; }
-        .col-fecha { width: 45%; text-align: center; color: #555; }
-        .col-monto { width: 30%; text-align: right; }
+        .table-responsive { overflow-x: auto; background: white; border: 1px solid var(--color-primary); border-radius: 0 0 8px 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 550px; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px dashed var(--color-border); }
+        th { color: var(--color-primary); font-weight: 600; border-bottom: 2px solid var(--color-border); }
+        tr:last-child td { border-bottom: none; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Simulador CMR (Cálculo Exacto)</h2>
-        
-        <label>¿Qué operación realizarás hoy?</label>
-        <select id="tipoOperacion" onchange="actualizarEstadoTEA()">
-            <option value="normal" selected>Compras en cuotas</option>
-            <option value="diferido">Aplazar pago 3 meses (pago diferido)</option>
-            <option value="cambio">Cuotas con tasa especial</option>
-        </select>
 
-        <label>Monto (S/):</label>
-        <input type="number" id="monto" step="0.01" value="487.00">
+    <div class="card">
+        <div class="form-group">
+            <label>¿Qué operación realizarás hoy?</label>
+            <select id="operacion" onchange="actualizarTasa()">
+                <option value="compras">Compras en cuotas</option>
+                <option value="diferido">Aplazar pago 3 meses (pago diferido)</option>
+                <option value="tasa_especial">Cuotas con tasa especial</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Monto a financiar (S/):</label>
+            <input type="number" id="monto" value="759">
+        </div>
+
+        <div class="form-group">
+            <label>Cuotas (1 a 36):</label>
+            <input type="number" id="cuotas" value="12">
+        </div>
+
+        <div class="form-group">
+            <label>Fecha de la transacción (Compra o Cambio):</label>
+            <input type="date" id="fechaTransaccion" value="2026-04-20">
+        </div>
         
-        <label>Cuotas (1 a 36):</label>
-        <input type="number" id="cuotas" value="2">
-        
-        <label>Fecha de la transacción (Compra o Cambio):</label>
-        <input type="date" id="fechaCompra" value="2026-09-11" required>
-        
-        <label>Tus días de pago son:</label>
-        <select id="diaPago">
-            <option value="5" selected>Día 05</option>
-            <option value="10">Día 10</option>
-            <option value="15">Día 15</option>
-            <option value="20">Día 20</option>
-            <option value="25">Día 25</option>
-            <option value="30">Día 30</option>
-        </select>
-        
-        <label>Tasa Efectiva Anual (TEA %):</label>
-        <input type="number" id="tea" step="0.01" value="109.83" readonly>
-        
-        <button class="btn-principal" onclick="calcularCuota()">Calcular cuotas</button>
-        
-        <div class="result" id="resultado"></div>
+        <div class="form-group">
+            <label>Tus días de pago son:</label>
+            <input type="number" id="diaPago" value="5" min="1" max="31">
+        </div>
+
+        <div class="box-anticipado">
+            <h4>Pagos Anticipados (Opcional)</h4>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>En la cuota N°</label>
+                    <input type="number" id="cuotaExtra" placeholder="Ej: 2" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Monto extra a Capital (S/)</label>
+                    <input type="number" id="montoExtra" placeholder="Ej: 200" min="0">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Estrategia del abono</label>
+                <select id="estrategia">
+                    <option value="reducir_plazo">Reducir Plazo (Terminar antes)</option>
+                    <option value="reducir_cuota">Reducir Cuota (Pagar menos al mes)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Tasa Efectiva Anual (TEA %):</label>
+            <input type="number" id="tea" value="109.83" step="0.01">
+        </div>
+
+        <button class="btn-block" onclick="calcularCronograma()">Calcular cuotas</button>
+    </div>
+
+    <div id="resultados" style="display: none;">
+        <div class="summary-box summary-black" id="resumen-fecha">
+            Tu 1ra fecha de pago sería el --/--/----
+        </div>
+
+        <div class="summary-box summary-green">
+            <span>Total a pagar (Capital + Interés):</span>
+            <span id="resumen-total">S/ 0.00</span>
+        </div>
+
+        <div class="summary-box summary-green">
+            <span>Interés total generado:</span>
+            <span id="resumen-interes">S/ 0.00</span>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <div class="table-header-container">
+                <button class="btn-pdf" onclick="exportarPDF()">PDF</button>
+                <h4 class="table-title">Detalle de tus cuotas</h4>
+            </div>
+            <div class="table-responsive">
+                <table id="tabla-cronograma">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Fecha</th>
+                            <th>Capital</th>
+                            <th>Interés</th>
+                            <th>Total Mes</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
-        function actualizarEstadoTEA() {
-            const operacion = document.getElementById('tipoOperacion').value;
+        function actualizarTasa() {
+            const operacion = document.getElementById('operacion').value;
             const inputTea = document.getElementById('tea');
-            if (operacion === 'cambio') {
-                inputTea.readOnly = false;
-            } else {
-                inputTea.value = 109.83;
-                inputTea.readOnly = true;
+            
+            if (operacion === 'compras') {
+                inputTea.value = '109.83';
             }
         }
 
-        function calcularCuota() {
-            const operacion = document.getElementById('tipoOperacion').value;
+        function calcularCronograma() {
             const monto = parseFloat(document.getElementById('monto').value);
-            const cuotas = parseInt(document.getElementById('cuotas').value);
-            const tea = parseFloat(document.getElementById('tea').value) / 100;
-            const diaPago = parseInt(document.getElementById('diaPago').value);
+            const numCuotas = parseInt(document.getElementById('cuotas').value);
+            const tea = parseFloat(document.getElementById('tea').value);
+            const fechaInput = document.getElementById('fechaTransaccion').value;
+            const diaPagoFijo = parseInt(document.getElementById('diaPago').value);
             
-            const fCompraStr = document.getElementById('fechaCompra').value;
-            const fCompra = new Date(fCompraStr + 'T00:00:00');
+            const cuotaExtra = parseInt(document.getElementById('cuotaExtra').value) || 0;
+            const montoExtra = parseFloat(document.getElementById('montoExtra').value) || 0;
+            const estrategia = document.getElementById('estrategia').value;
             
-            if(isNaN(fCompra)) { alert("Ingresa la fecha de la transacción."); return; }
-
-            const diasCierre = { 5: 9, 10: 14, 15: 19, 20: 24, 25: 29, 30: 4 };
-            const diaCierre = diasCierre[diaPago];
-
-            let fVenc = new Date(fCompra.getFullYear(), fCompra.getMonth(), diaPago);
-            
-            if (diaPago === 30) {
-                if (fCompra.getDate() > diaCierre) { fVenc.setMonth(fVenc.getMonth() + 1); }
-            } else {
-                if (fCompra.getDate() > diaCierre) { fVenc.setMonth(fVenc.getMonth() + 2); } 
-                else { fVenc.setMonth(fVenc.getMonth() + 1); }
+            if (!monto || !numCuotas || !tea || !fechaInput || !diaPagoFijo) {
+                alert("Completa todos los datos principales.");
+                return;
             }
 
-            if (operacion === "diferido") { fVenc.setMonth(fVenc.getMonth() + 2); }
-
-            const diffTime = fVenc.getTime() - fCompra.getTime();
-            const diasReales = Math.round(diffTime / (1000 * 3600 * 24));
-            let diasExtra = diasReales > 30 ? diasReales - 30 : 0;
-
-            const tem = Math.pow(1 + tea, 1/12) - 1;
-            const cuotaBase = monto * (tem * Math.pow(1 + tem, cuotas)) / (Math.pow(1 + tem, cuotas) - 1);
-            let interesAjuste = diasExtra > 0 ? monto * (Math.pow(1 + tea, diasExtra / 360) - 1) : 0;
-
-            const cuota1 = cuotaBase + interesAjuste;
-            const totalPagar = cuota1 + (cuotaBase * (cuotas - 1));
-            const interesTotal = totalPagar - monto;
-
-            const dia = String(fVenc.getDate()).padStart(2, '0');
-            const mes = String(fVenc.getMonth() + 1).padStart(2, '0');
-            const anio = fVenc.getFullYear();
-            const fechaFormateada = `${dia}/${mes}/${anio}`;
-
-            let htmlCuotas = `<div class="cronograma">`;
-            htmlCuotas += `<div class="cronograma-top-bar">
-                                <button class="btn-pdf" onclick="descargarPDF()">PDF</button>
-                                <input type="text" id="tituloPDF" class="input-titulo-pdf" value="Simulación de Cuotas" placeholder="Título del PDF">
-                           </div>`;
-            htmlCuotas += `<div class="cronograma-title">Detalle de tus cuotas</div>`;
-            htmlCuotas += `<div class="cronograma-header">
-                                <span class="col-n">N°</span>
-                                <span class="col-fecha">Último día de pago</span>
-                                <span class="col-monto">Monto</span>
-                           </div>`;
-
-            for (let i = 1; i <= cuotas; i++) {
-                let valorCuota = (i === 1) ? cuota1 : cuotaBase;
-                let tempDate = new Date(fVenc.getFullYear(), fVenc.getMonth() + (i - 1), 1);
-                let ultimoDiaMes = new Date(tempDate.getFullYear(), tempDate.getMonth() + 1, 0).getDate();
-                let diaReal = Math.min(diaPago, ultimoDiaMes);
-                let fechaCuota = new Date(tempDate.getFullYear(), tempDate.getMonth(), diaReal);
-                
-                let d = String(fechaCuota.getDate()).padStart(2, '0');
-                let m = String(fechaCuota.getMonth() + 1).padStart(2, '0');
-                let y = fechaCuota.getFullYear();
-                
-                htmlCuotas += `<div class="cronograma-row">
-                                    <span class="col-n">Cuota ${i}</span> 
-                                    <span class="col-fecha">${d}/${m}/${y}</span>
-                                    <strong class="col-monto">S/ ${valorCuota.toFixed(2)}</strong>
-                               </div>`;
-            }
-            htmlCuotas += `</div>`;
+            const tem = Math.pow(1 + (tea / 100), 1 / 12) - 1;
+            let cuotaFija = monto * (tem * Math.pow(1 + tem, numCuotas)) / (Math.pow(1 + tem, numCuotas) - 1);
             
-            htmlCuotas += `<span id="dato-interes" style="display:none;">S/ ${interesTotal.toFixed(2)}</span>`;
+            let saldo = monto;
+            let totalInteres = 0;
+            let totalPagado = 0;
+            
+            // Lógica para determinar la primera fecha de pago
+            let fechaTx = new Date(fechaInput + 'T00:00:00');
+            // Aseguramos que la fecha base de cobro no tome el mes actual incorrectamente
+            let fechaActual = new Date(fechaTx.getFullYear(), fechaTx.getMonth() + 1, diaPagoFijo);
+            
+            // Si la distancia entre la compra y el día de pago es muy corta (ej. menos de 20 días), salta al siguiente mes
+            const msPorDia = 1000 * 60 * 60 * 24;
+            let diasDiferencia = Math.round((fechaActual - fechaTx) / msPorDia);
+            
+            if (diasDiferencia < 20) {
+                fechaActual.setMonth(fechaActual.getMonth() + 1);
+                diasDiferencia = Math.round((fechaActual - fechaTx) / msPorDia);
+            }
+            
+            let tbody = document.getElementById('tabla-body');
+            tbody.innerHTML = "";
+            let primeraFechaFomateada = "";
 
-            const resDiv = document.getElementById('resultado');
-            resDiv.style.display = 'block';
-            resDiv.innerHTML = `
-                <div class="card-black"><span>Tu 1ra fecha de pago sería el</span><strong>${fechaFormateada}</strong></div>
-                <div class="card-green"><span>Total a pagar (Suma de cuotas):</span><strong>S/ ${totalPagar.toFixed(2)}</strong></div>
-                <div class="card-green"><span>Interés total generado:</span><strong>S/ ${interesTotal.toFixed(2)}</strong></div>
-                ${htmlCuotas}
-                <div class="details">
-                    <p><strong>Desglose de la 1ra cuota:</strong></p>
-                    <p><span>Días transcurridos hasta el pago:</span> <span>${diasReales}</span></p>
-                    <p><span>Ajuste por días extra (>30):</span> <span>${diasExtra}</span></p>
-                    <p><span>Interés de ajuste sumado:</span> <span>S/ ${interesAjuste.toFixed(2)}</span></p>
-                </div>
-            `;
+            for (let i = 1; i <= numCuotas; i++) {
+                if (saldo <= 0.05) break;
+
+                let interesMes, amortizacion, cuotaCobrar;
+
+                if (i === 1) {
+                    // CÁLCULO DE LA PRIMERA CUOTA: Interés basado en días exactos transcurridos
+                    const tasaDias = Math.pow(1 + (tea / 100), diasDiferencia / 360) - 1;
+                    interesMes = saldo * tasaDias;
+                    
+                    // La amortización de capital es la misma de un mes normal para no alterar el cuadro
+                    const interesBaseMesNormal = saldo * tem;
+                    amortizacion = cuotaFija - interesBaseMesNormal;
+                    cuotaCobrar = amortizacion + interesMes;
+                } else {
+                    // Cuotas regulares
+                    interesMes = saldo * tem;
+                    amortizacion = cuotaFija - interesMes;
+                    cuotaCobrar = cuotaFija;
+                }
+
+                // Ajuste de última cuota
+                if (saldo < amortizacion) {
+                    amortizacion = saldo;
+                    cuotaCobrar = amortizacion + interesMes;
+                }
+
+                saldo -= amortizacion;
+                
+                // Lógica de Pagos Anticipados
+                let abonoExtraFila = 0;
+                if (i === cuotaExtra && montoExtra > 0) {
+                    abonoExtraFila = montoExtra;
+                    saldo -= abonoExtraFila;
+                    if(saldo < 0) saldo = 0;
+
+                    if (estrategia === 'reducir_cuota' && saldo > 0) {
+                        let cuotasRestantes = numCuotas - i;
+                        if (cuotasRestantes > 0) {
+                            cuotaFija = saldo * (tem * Math.pow(1 + tem, cuotasRestantes)) / (Math.pow(1 + tem, cuotasRestantes) - 1);
+                        }
+                    }
+                }
+
+                let capitalAmortizadoFila = amortizacion + abonoExtraFila;
+
+                totalInteres += interesMes;
+                let pagoTotalFila = cuotaCobrar + abonoExtraFila;
+                totalPagado += pagoTotalFila;
+
+                let dia = String(fechaActual.getDate()).padStart(2, '0');
+                let mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
+                let anio = fechaActual.getFullYear();
+                let fechaStr = `${dia}/${mes}/${anio}`;
+                
+                if (i === 1) primeraFechaFomateada = fechaStr;
+
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>Cta ${i}</td>
+                    <td>${fechaStr}</td>
+                    <td>S/ ${capitalAmortizadoFila.toFixed(2)}</td>
+                    <td>S/ ${interesMes.toFixed(2)}</td>
+                    <td><b>S/ ${pagoTotalFila.toFixed(2)}</b></td>
+                    <td style="color: #666;">S/ ${Math.max(0, saldo).toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+
+                // Avanzar mes para la siguiente iteración
+                fechaActual = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, diaPagoFijo);
+            }
+
+            document.getElementById('resumen-fecha').innerText = `Tu 1ra fecha de pago sería el ${primeraFechaFomateada}`;
+            document.getElementById('resumen-total').innerText = `S/ ${totalPagado.toFixed(2)}`;
+            document.getElementById('resumen-interes').innerText = `S/ ${totalInteres.toFixed(2)}`;
+            
+            document.getElementById('resultados').style.display = 'block';
         }
 
-        function descargarPDF() {
+        function exportarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            const titulo = document.getElementById('tituloPDF').value.trim() || 'Detalle de Cuotas';
-            
             doc.setFontSize(16);
-            doc.text(titulo, 105, 20, { align: 'center' });
-            
-            const filas = [];
-            document.querySelectorAll('.cronograma-row').forEach(row => {
-                const num = row.querySelector('.col-n').innerText;
-                const fecha = row.querySelector('.col-fecha').innerText;
-                const monto = row.querySelector('.col-monto').innerText;
-                filas.push([num, fecha, monto]);
-            });
+            doc.setTextColor(0, 143, 57);
+            doc.text("Simulación de Cuotas - Detalle", 14, 20);
             
             doc.autoTable({
+                html: '#tabla-cronograma',
                 startY: 28,
-                head: [['N°', 'Último día de pago', 'Monto']],
-                body: filas,
-                theme: 'plain', 
-                headStyles: { 
-                    textColor: [0, 138, 61], 
-                    fontStyle: 'bold',
-                    halign: 'center',
-                    lineWidth: { bottom: 0.5 }, 
-                    lineColor: [0, 138, 61]
-                },
-                columnStyles: {
-                    0: { halign: 'left', cellWidth: 25 },
-                    1: { halign: 'center', cellWidth: 40 },
-                    2: { halign: 'right', cellWidth: 25 }
-                },
-                tableWidth: 90, 
-                margin: { left: 60 }, 
-                styles: { fontSize: 10, cellPadding: 4 },
-                // Gancho para dibujar líneas punteadas horizontales en el cuerpo de la tabla
-                didDrawCell: function(data) {
-                    if (data.section === 'body') {
-                        doc.setDrawColor(210, 210, 210); // Color gris claro
-                        doc.setLineWidth(0.3); // Grosor de la línea
-                        doc.setLineDash([1, 2], 0); // Patrón: 1px pintado, 2px vacío
-                        
-                        // Traza la línea horizontal en la parte inferior de la celda
-                        doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
-                        
-                        doc.setLineDash([], 0); // Restaura a línea sólida normal para otros elementos
-                    }
-                }
+                theme: 'grid',
+                headStyles: { fillColor: [0, 138, 60] },
+                styles: { halign: 'center', fontSize: 10 }
             });
             
-            const interesTotal = document.getElementById('dato-interes').innerText;
-            const finalY = doc.lastAutoTable.finalY || 30;
-            
-            doc.setFontSize(11);
-            doc.setTextColor(50, 50, 50);
-            doc.text(`Cálculo del interés total generado: ${interesTotal}`, 60, finalY + 10);
-            
-            doc.save(`${titulo.replace(/ /g, '_')}.pdf`);
+            doc.save('Simulacion_Cuotas_CMR.pdf');
         }
     </script>
 </body>
